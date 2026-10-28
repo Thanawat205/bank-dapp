@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bank DApp</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      margin: 0;
+      padding: 24px;
+      color: #1e293b;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+    }
+
+    .card {
+      background: white;
+      padding: 24px;
+      margin-bottom: 18px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px #0000000d;
+    }
+
+    h1, h2 { margin-top: 0; }
+    h1 { color: #1d4ed8; }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .secondary { background: #475569; }
+    .balance {
+      font-size: 26px;
+      font-weight: bold;
+      color: #15803d;
+    }
+
+    .small {
+      overflow-wrap: anywhere;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    #message {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="card">
+    <h1>Bank DApp</h1>
+    <p>ระบบธนาคารบน Ethereum Sepolia</p>
+
+    <p><b>รหัสนักศึกษา:</b> 66073501</p>
+    <p><b>ชื่อ-สกุล:</b> ธนวรรธ ไคล้สา</p>
+
+    <button id="connectBtn" onclick="connectWallet()">
+      เชื่อมต่อ MetaMask
+    </button>
+
+    <p><b>Wallet:</b></p>
+    <p id="wallet" class="small">ยังไม่ได้เชื่อมต่อ</p>
+    <p id="network" class="small">เครือข่าย: ยังไม่ทราบ</p>
+  </div>
+
+  <div class="card">
+    <h2>ยอดเงินใน Contract</h2>
+    <p class="balance"><span id="balance">-</span> ETH</p>
+    <button onclick="checkBalance()" class="secondary">
+      Check Balance
+    </button>
+  </div>
+
+  <div class="card">
+    <h2>Deposit - ฝากเงิน</h2>
+
+    <label for="depositAmount">จำนวน ETH</label>
+    <input id="depositAmount" type="number"
+      min="0" step="any" placeholder="เช่น 0.01">
+
+    <button onclick="deposit()">Deposit</button>
+  </div>
+
+  <div class="card">
+    <h2>Withdraw - ถอนเงิน</h2>
+
+    <label for="withdrawAmount">จำนวน ETH</label>
+    <input id="withdrawAmount" type="number"
+      min="0" step="any" placeholder="เช่น 0.005">
+
+    <button onclick="withdraw()">Withdraw</button>
+  </div>
+
+  <div class="card">
+    <h2>ผลการทำรายการ</h2>
+    <p id="message">กรุณาเชื่อมต่อ MetaMask ก่อนใช้งาน</p>
+  </div>
+
+</div>
+
+<script>
+  const CONTRACT_ADDRESS = "0x587d4328747afd350660ec3628f08a8d43261169";
+
+  const ABI = [
+    "function deposit() public payable",
+    "function withdraw(uint256 amount) public",
+    "function checkBalance() public view returns (uint256)",
+    "event Deposit(address indexed owner, uint256 amount)",
+    "event Withdraw(address indexed owner, uint256 amount)"
+  ];
+
+  let provider;
+  let signer;
+  let bank;
+  let currentAccount;
+
+  const $ = (id) => document.getElementById(id);
+
+  function showMessage(text) {
+    $("message").textContent = text;
+  }
+
+    async function connectWallet() {
+    try {
+        if (!window.ethereum) {
+        throw new Error("ไม่พบ MetaMask");
+        }
+
+        showMessage("กำลังเชื่อมต่อ MetaMask...");
+
+        const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts"
+        });
+
+        if (!accounts || accounts.length === 0) {
+        throw new Error("ไม่ได้เลือกบัญชี");
+        }
+
+        const account = accounts[0];
+
+        $("wallet").textContent = account;
+
+        const chainId = await window.ethereum.request({
+        method: "eth_chainId"
+        });
+
+        $("network").textContent =
+        chainId === "0xaa36a7"
+            ? "เครือข่าย: Sepolia Testnet"
+            : "Chain ID: " + chainId;
+
+        provider = new ethers.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
+
+        bank = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        ABI,
+        signer
+        );
+
+        $("connectBtn").textContent = "เชื่อมต่อแล้ว";
+        showMessage("เชื่อมต่อ MetaMask สำเร็จ");
+
+    } catch (error) {
+        showMessage("เชื่อมต่อไม่สำเร็จ: " + error.message);
+    }
+    }
+
+  async function checkBalance() {
+    try {
+      if (!bank) {
+        throw new Error("กรุณาเชื่อมต่อ MetaMask ก่อน");
+      }
+
+      const amount = await bank.checkBalance();
+
+      $("balance").textContent =
+        Number(ethers.formatEther(amount)).toLocaleString(
+          "en-US",
+          { maximumFractionDigits: 8 }
+        );
+
+      showMessage("ตรวจสอบยอดเงินสำเร็จ");
+
+    } catch (error) {
+      showMessage(error.shortMessage || error.message);
+    }
+  }
+
+  async function deposit() {
+    try {
+      if (!bank) {
+        throw new Error("กรุณาเชื่อมต่อ MetaMask ก่อน");
+      }
+
+      const input = $("depositAmount").value;
+
+      if (!input || !Number.isFinite(Number(input)) ||
+          Number(input) <= 0) {
+        throw new Error("กรุณากรอกจำนวน ETH ให้ถูกต้อง");
+      }
+
+      const amount = ethers.parseEther(input);
+
+      showMessage("กรุณายืนยัน Deposit ใน MetaMask");
+
+      const tx = await bank.deposit({ value: amount });
+
+      showMessage("ส่งธุรกรรมแล้ว กำลังรอยืนยัน...\n" + tx.hash);
+
+      await tx.wait();
+
+      showMessage("ฝากเงินสำเร็จ!\nTransaction: " + tx.hash);
+
+      $("depositAmount").value = "";
+      await checkBalance();
+
+    } catch (error) {
+      showMessage(error.shortMessage || error.message);
+    }
+  }
+
+  async function withdraw() {
+    try {
+      if (!bank) {
+        throw new Error("กรุณาเชื่อมต่อ MetaMask ก่อน");
+      }
+
+      const input = $("withdrawAmount").value;
+
+      if (!input || !Number.isFinite(Number(input)) ||
+          Number(input) <= 0) {
+        throw new Error("กรุณากรอกจำนวน ETH ให้ถูกต้อง");
+      }
+
+      const amount = ethers.parseEther(input);
+
+      showMessage("กรุณายืนยัน Withdraw ใน MetaMask");
+
+      const tx = await bank.withdraw(amount);
+
+      showMessage("ส่งธุรกรรมแล้ว กำลังรอยืนยัน...\n" + tx.hash);
+
+      await tx.wait();
+
+      showMessage("ถอนเงินสำเร็จ!\nTransaction: " + tx.hash);
+
+      $("withdrawAmount").value = "";
+      await checkBalance();
+
+    } catch (error) {
+      showMessage(error.shortMessage || error.message);
+    }
+  }
+
+  if (window.ethereum) {
+    window.ethereum.on("accountsChanged", () => {
+      location.reload();
+    });
+
+    window.ethereum.on("chainChanged", () => {
+      location.reload();
+    });
+  }
+</script>
+
+</body>
+</html>
