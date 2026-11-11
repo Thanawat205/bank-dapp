@@ -1,0 +1,13 @@
+@{
+    Layout = "~/Views/Shared/_blankLayouts.cshtml";
+}
+
+@model Quiz.ViewModel.UserViewModel;
+
+<div>
+    <form asp-controller="Student" asp-action="Index">
+    <input type="text" placeholder="UserId" asp-for="UserId">
+    <input type="text" placeholder="Password" asp-for="Password">
+    <button type="submit">submit</button>
+    </form>
+</div>

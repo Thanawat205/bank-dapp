@@ -1,0 +1,26 @@
+@{
+    Layout = "~/Views/Shared/_blankLayouts.cshtml";
+}
+
+@model List<Quiz.ViewModel.UserViewModel>
+
+<h1>Student List</h1>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th scope="col">UserId</th>
+            <th scope="col">Password</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.UserId</td>
+                <td>@item.Password</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
